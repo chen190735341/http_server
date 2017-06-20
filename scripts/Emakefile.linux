@@ -1,0 +1,7 @@
+{['../src/*/*',
+  '../src/*/*/*',
+  '../src/*/*/*/*',
+  '../src/*/*/*/*/*',
+  '../src/*/*/*/*/*/*'],
+  [{i, "../include"}, {outdir, "../ebin"}, nowarn_unused_vars, nowarn_unused_function,native,{hipe,[o3]}]}.
+

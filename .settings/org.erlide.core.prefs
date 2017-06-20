@@ -1,0 +1,9 @@
+#Tue Jun 13 11:38:54 CST 2017
+backend_version=R15B
+eclipse.preferences.version=1
+external_includes=
+external_modules=
+include_dirs=include;
+nukeOutputOnClean=false
+output_dir=ebin
+source_dirs=src/cowboy/cowboy/src;src/cowboy/cowlib/src;src/cowboy/ranch/src;src/http_test;src/util;

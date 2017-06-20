@@ -1,0 +1,37 @@
+#!/usr/bin/env escript
+%% -*- erlang -*- 
+%%! -smp enable -pa ../ebin
+main([Options]) -> 
+	compile_all(Options);
+
+main(_) ->
+	compile_all(). 
+
+compile_all(Options)->
+	case mmake:all(get_cpu_cores(),[Options]) of 
+		up_to_date ->
+			halt(0); 
+		error -> 
+			halt(1) 
+	end.
+
+compile_all()->
+	case mmake:all(get_cpu_cores()) of 
+		up_to_date ->
+			halt(0); 
+		error -> 
+			halt(1) 
+	end.
+
+%%
+%%return all cores - 1  
+%%
+get_cpu_cores()->
+	 case os:type() of
+	 	{unix, _} ->
+		  CoreS = erlang:system_info(logical_processors);
+	  	_->
+		  CoreS = erlang:system_info(logical_processors) -1 
+	 end,
+	 erlang:max(CoreS,1). 
+

@@ -1,0 +1,12 @@
+#!/usr/bin/env escript
+%% -*- erlang -*- 
+%%! -smp enable
+
+main(Args)->
+	code:add_patha("../ebin"),
+	FormatArgs  = os_util:analysis_argments(Args),
+	os_util:print_args(Args,FormatArgs),
+	RunOption = " -pa ../ebin -s cowboy_start_app start ",
+	os_util:run_erl(RunOption,FormatArgs).
+	
+	

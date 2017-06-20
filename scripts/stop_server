@@ -1,0 +1,17 @@
+#!/usr/bin/env escript
+%% -*- erlang -*- 
+%%! -smp enable -pa ../ebin
+
+main(Args)->
+	code:add_patha("../ebin"),
+	FormatArgs  = os_util:analysis_argments(Args),
+	os_util:print_args(Args,FormatArgs),
+	StopNode = 
+		case lists:keyfind(stop_node, 1, FormatArgs) of
+			{stop_node,[TName|_]}->
+				TName;
+			_->
+				"cowboy_node@"++os_util:get_localip()
+		end,
+	RunOption = " -pa ../ebin -s os_util stop_node  "++StopNode++" -s init stop ",
+	os_util:run_erl(RunOption,FormatArgs).
