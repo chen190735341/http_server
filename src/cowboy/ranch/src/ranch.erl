@@ -15,9 +15,9 @@
 %% @doc Ranch API to start and stop listeners.
 -module(ranch).
 
--export([start_listener/6]).
+-export([start_listener/7]).
 -export([stop_listener/1]).
--export([child_spec/6]).
+-export([child_spec/7]).
 -export([accept_ack/1]).
 -export([remove_connection/1]).
 -export([get_port/1]).
@@ -59,9 +59,9 @@
 %%
 %% This function will return `{error, badarg}` if and only if the transport
 %% module given doesn't appear to be correct.
--spec start_listener(ref(), non_neg_integer(), module(), any(), module(), any())
+-spec start_listener(ref(), non_neg_integer(), module(), any(), module(), any(),non_neg_integer())
 	-> {ok, pid()} | {error, badarg}.
-start_listener(Ref, NbAcceptors, Transport, TransOpts, Protocol, ProtoOpts)
+start_listener(Ref, NbAcceptors, Transport, TransOpts, Protocol, ProtoOpts,ConnsSupCount)
 		when is_integer(NbAcceptors) andalso is_atom(Transport)
 		andalso is_atom(Protocol) ->
 	_ = code:ensure_loaded(Transport),
@@ -70,7 +70,7 @@ start_listener(Ref, NbAcceptors, Transport, TransOpts, Protocol, ProtoOpts)
 			{error, badarg};
 		true ->
 			Res = supervisor:start_child(ranch_sup, child_spec(Ref, NbAcceptors,
-					Transport, TransOpts, Protocol, ProtoOpts)),
+					Transport, TransOpts, Protocol, ProtoOpts,ConnsSupCount)),
 			Socket = proplists:get_value(socket, TransOpts),
 			case Res of
 				{ok, Pid} when Socket =/= undefined ->
@@ -113,13 +113,13 @@ stop_listener(Ref) ->
 %% The parameters are the same as in <em>start_listener/6</em> but rather
 %% than hooking the listener to the Ranch internal supervisor, it just returns
 %% the spec.
--spec child_spec(ref(), non_neg_integer(), module(), any(), module(), any())
+-spec child_spec(ref(), non_neg_integer(), module(), any(), module(), any(),non_neg_integer())
 	-> supervisor:child_spec().
-child_spec(Ref, NbAcceptors, Transport, TransOpts, Protocol, ProtoOpts)
+child_spec(Ref, NbAcceptors, Transport, TransOpts, Protocol, ProtoOpts,ConnsSupCount)
 		when is_integer(NbAcceptors) andalso is_atom(Transport)
 		andalso is_atom(Protocol) ->
 	{{ranch_listener_sup, Ref}, {ranch_listener_sup, start_link, [
-		Ref, NbAcceptors, Transport, TransOpts, Protocol, ProtoOpts
+		Ref, NbAcceptors, Transport, TransOpts, Protocol, ProtoOpts,ConnsSupCount
 	]}, permanent, 5000, supervisor, [ranch_listener_sup]}.
 
 %% @doc Acknowledge the accepted connection.
@@ -137,8 +137,8 @@ accept_ack(Ref) ->
 %% connections.
 -spec remove_connection(ref()) -> ok.
 remove_connection(Ref) ->
-	ConnsSup = ranch_server:get_connections_sup(Ref),
-	ConnsSup ! {remove_connection, Ref},
+	ConnsSupNumList = ranch_server:get_connections_sup(Ref),
+	lists:foreach(fun({ConnsSup,_})->ConnsSup ! {remove_connection, Ref} end, ConnsSupNumList),
 	ok.
 
 %% @doc Return the listener's port.

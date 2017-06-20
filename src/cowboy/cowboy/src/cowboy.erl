@@ -15,9 +15,9 @@
 %% @doc Convenience API to start and stop HTTP/HTTPS listeners.
 -module(cowboy).
 
--export([start_http/4]).
--export([start_https/4]).
--export([start_spdy/4]).
+-export([start_http/5]).
+-export([start_https/5]).
+-export([start_spdy/5]).
 -export([stop_listener/1]).
 -export([set_env/3]).
 
@@ -39,24 +39,24 @@
 
 %% @doc Start an HTTP listener.
 -spec start_http(ranch:ref(), non_neg_integer(), ranch_tcp:opts(),
-	cowboy_protocol:opts()) -> {ok, pid()} | {error, any()}.
-start_http(Ref, NbAcceptors, TransOpts, ProtoOpts)
+	cowboy_protocol:opts(),non_neg_integer()) -> {ok, pid()} | {error, any()}.
+start_http(Ref, NbAcceptors, TransOpts, ProtoOpts,ConnsSupCount)
 		when is_integer(NbAcceptors), NbAcceptors > 0 ->
 	ranch:start_listener(Ref, NbAcceptors,
-		ranch_tcp, TransOpts, cowboy_protocol, ProtoOpts).
+		ranch_tcp, TransOpts, cowboy_protocol, ProtoOpts,ConnsSupCount).
 
 %% @doc Start an HTTPS listener.
 -spec start_https(ranch:ref(), non_neg_integer(), ranch_ssl:opts(),
-	cowboy_protocol:opts()) -> {ok, pid()} | {error, any()}.
-start_https(Ref, NbAcceptors, TransOpts, ProtoOpts)
+	cowboy_protocol:opts(),non_neg_integer()) -> {ok, pid()} | {error, any()}.
+start_https(Ref, NbAcceptors, TransOpts, ProtoOpts,ConnsSupCount)
 		when is_integer(NbAcceptors), NbAcceptors > 0 ->
 	ranch:start_listener(Ref, NbAcceptors,
-		ranch_ssl, TransOpts, cowboy_protocol, ProtoOpts).
+		ranch_ssl, TransOpts, cowboy_protocol, ProtoOpts,ConnsSupCount).
 
 %% @doc Start a SPDY listener.
 -spec start_spdy(ranch:ref(), non_neg_integer(), ranch_ssl:opts(),
-	cowboy_spdy:opts()) -> {ok, pid()} | {error, any()}.
-start_spdy(Ref, NbAcceptors, TransOpts, ProtoOpts)
+	cowboy_spdy:opts(),non_neg_integer()) -> {ok, pid()} | {error, any()}.
+start_spdy(Ref, NbAcceptors, TransOpts, ProtoOpts,ConnsSupCount)
 		when is_integer(NbAcceptors), NbAcceptors > 0 ->
 	TransOpts2 = [
 		{connection_type, supervisor},
@@ -64,7 +64,7 @@ start_spdy(Ref, NbAcceptors, TransOpts, ProtoOpts)
 			[<<"spdy/3">>, <<"http/1.1">>, <<"http/1.0">>]}
 	|TransOpts],
 	ranch:start_listener(Ref, NbAcceptors,
-		ranch_ssl, TransOpts2, cowboy_spdy, ProtoOpts).
+		ranch_ssl, TransOpts2, cowboy_spdy, ProtoOpts,ConnsSupCount).
 
 %% @doc Stop a listener.
 -spec stop_listener(ranch:ref()) -> ok.

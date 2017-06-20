@@ -32,7 +32,8 @@ start_link(Ref, NbAcceptors, Transport, TransOpts) ->
 %% supervisor.
 
 init([Ref, NbAcceptors, Transport, TransOpts]) ->
-	ConnsSup = ranch_server:get_connections_sup(Ref),
+	ConnsSupList = ranch_server:get_connections_sup(Ref),
+	ConnsSupNum = length(ConnsSupList),
 	LSocket = case proplists:get_value(socket, TransOpts) of
 		undefined ->
 			{ok, Socket} = Transport:listen(TransOpts),
@@ -46,5 +47,5 @@ init([Ref, NbAcceptors, Transport, TransOpts]) ->
 		{{acceptor, self(), N}, {ranch_acceptor, start_link, [
 			LSocket, Transport, ConnsSup
 		]}, permanent, brutal_kill, worker, []}
-			|| N <- lists:seq(1, NbAcceptors)],
+			|| N <- lists:seq(1, NbAcceptors),{ConnsSup,_} <-[lists:nth(N rem ConnsSupNum+1, ConnsSupList)]],
 	{ok, {{one_for_one, 10, 10}, Procs}}.

@@ -30,7 +30,7 @@ start(TcpAcceptors,Port,BackLog)->
 			{'_', cowboy_test_handler, []}
 		]}
 	]),
-	cowboy:start_http(cowboy_http_test_server, TcpAcceptors,Opt, [{env, [{dispatch, Dispatch}]}]).
+	cowboy:start_http(cowboy_http_test_server, TcpAcceptors,Opt, [{env, [{dispatch, Dispatch}]}],2).
 
 
 

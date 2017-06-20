@@ -14,7 +14,7 @@
 %% --------------------------------------------------------------------
 %% External exports
 %% --------------------------------------------------------------------
--export([start_link/0,start_cowboy_server/3]).
+-export([start_link/0,start_cowboy_server/4]).
 
 %% --------------------------------------------------------------------
 %% Internal exports
@@ -39,7 +39,7 @@
 start_link() ->
 	supervisor:start_link({local, ?MODULE}, ?MODULE, []).
 
-start_cowboy_server(TcpAcceptors,Port,BackLog)->
+start_cowboy_server(TcpAcceptors,Port,BackLog,ConnsSupCount)->
 	%%修改backlog扩大socket监听队列(注意修改somaxconn,baclog受限于somaxconn),注意TcpAcceptors数量，要足够应付高并发
 	TcpOpts = [{port,Port},{max_connections, infinity},{backlog,BackLog}], 
 	Dispatch = cowboy_router:compile([
@@ -47,7 +47,7 @@ start_cowboy_server(TcpAcceptors,Port,BackLog)->
 			{'_', cowboy_test_handler, []}
 		]}
 	]),
-	cowboy:start_http(cowboy_http_server, TcpAcceptors,TcpOpts, [{env, [{dispatch, Dispatch}]}]).
+	cowboy:start_http(cowboy_http_server, TcpAcceptors,TcpOpts, [{env, [{dispatch, Dispatch}]}],ConnsSupCount).
 
 
 %% ====================================================================

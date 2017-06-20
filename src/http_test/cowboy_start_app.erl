@@ -53,9 +53,10 @@ start(_Type, _StartArgs) ->
     case cowboy_start_sup:start_link() of
 	{ok, _Pid} ->
 		Port = list_to_integer(get_argument(port,"8007")),
-		TcpAcceptors = list_to_integer(get_argument(tcpacceptors,"10")),
+		TcpAcceptors = list_to_integer(get_argument(tcpacceptors,"512")),
 		BackLog = list_to_integer(get_argument(backlog,"1024")),
-		cowboy_start_sup:start_cowboy_server(TcpAcceptors,Port,BackLog),
+		ConnsSupCount = list_to_integer(get_argument(conns_sup_count,"64")), 
+		cowboy_start_sup:start_cowboy_server(TcpAcceptors,Port,BackLog,ConnsSupCount),
 	    {ok, self()};
 	Error ->
 	    Error

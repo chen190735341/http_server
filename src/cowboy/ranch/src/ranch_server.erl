@@ -20,7 +20,7 @@
 -export([start_link/0]).
 -export([set_new_listener_opts/3]).
 -export([cleanup_listener_opts/1]).
--export([set_connections_sup/2]).
+-export([set_connections_sup/3]).
 -export([get_connections_sup/1]).
 -export([set_port/2]).
 -export([get_port/1]).
@@ -66,13 +66,13 @@ cleanup_listener_opts(Ref) ->
 	ok.
 
 %% @doc Set a connection supervisor associated with specific listener.
--spec set_connections_sup(ranch:ref(), pid()) -> ok.
-set_connections_sup(Ref, Pid) ->
-	true = gen_server:call(?MODULE, {set_connections_sup, Ref, Pid}),
+-spec set_connections_sup(ranch:ref(), pid(),non_neg_integer()) -> ok.
+set_connections_sup(Ref, Pid,Num) ->
+	true = gen_server:call(?MODULE, {set_connections_sup, Ref, Pid,Num}),
 	ok.
 
 %% @doc Return the connection supervisor used by specific listener.
--spec get_connections_sup(ranch:ref()) -> pid().
+-spec get_connections_sup(ranch:ref()) -> [{pid(),non_neg_integer()}].
 get_connections_sup(Ref) ->
 	ets:lookup_element(?TAB, {conns_sup, Ref}, 2).
 
@@ -109,14 +109,16 @@ get_protocol_options(Ref) ->
 %% @doc Count the number of connections in the connection pool.
 -spec count_connections(ranch:ref()) -> non_neg_integer().
 count_connections(Ref) ->
-	ranch_conns_sup:active_connections(get_connections_sup(Ref)).
+	lists:foldl(fun({Pid,_Num},Acc)->
+						Acc+ranch_conns_sup:active_connections(Pid)
+				end, 0, get_connections_sup(Ref)).
 
 %% gen_server.
 
 %% @private
 init([]) ->
 	Monitors = [{{erlang:monitor(process, Pid), Pid}, Ref} ||
-		[Ref, Pid] <- ets:match(?TAB, {{conns_sup, '$1'}, '$2'})],
+		[Ref, PidNumList] <- ets:match(?TAB, {{conns_sup, '$1'}, '$2'}),{Pid,_}<-PidNumList],
 	{ok, #state{monitors=Monitors}}.
 
 %% @private
@@ -124,16 +126,18 @@ handle_call({set_new_listener_opts, Ref, MaxConns, Opts}, _, State) ->
 	ets:insert(?TAB, {{max_conns, Ref}, MaxConns}),
 	ets:insert(?TAB, {{opts, Ref}, Opts}),
 	{reply, ok, State};
-handle_call({set_connections_sup, Ref, Pid}, _,
+handle_call({set_connections_sup, Ref, Pid,Num}, _,
 		State=#state{monitors=Monitors}) ->
-	case ets:insert_new(?TAB, {{conns_sup, Ref}, Pid}) of
-		true ->
-			MonitorRef = erlang:monitor(process, Pid),
-			{reply, true,
+	MonitorRef = erlang:monitor(process, Pid),
+	case ets:lookup(?TAB, {conns_sup, Ref}) of
+		[{{conns_sup, Ref}, PidNumList}]->
+			 NPidNumList = [{Pid,Num}|PidNumList];
+		[]->
+			NPidNumList = [{Pid,Num}]
+	end,
+	ets:insert(?TAB, {{conns_sup, Ref}, NPidNumList}),
+		{reply, true,
 				State#state{monitors=[{{MonitorRef, Pid}, Ref}|Monitors]}};
-		false ->
-			{reply, false, State}
-	end;
 handle_call({set_port, Ref, Port}, _, State) ->
 	true = ets:insert(?TAB, {{port, Ref}, Port}),
 	{reply, ok, State};
@@ -158,7 +162,17 @@ handle_cast(_Request, State) ->
 handle_info({'DOWN', MonitorRef, process, Pid, _},
 		State=#state{monitors=Monitors}) ->
 	{_, Ref} = lists:keyfind({MonitorRef, Pid}, 1, Monitors),
-	true = ets:delete(?TAB, {conns_sup, Ref}),
+	case ets:lookup(?TAB, {conns_sup, Ref}) of
+		[{{conns_sup, Ref},PidNumList}]->
+			case  lists:keydelete(Pid, 1, PidNumList) of
+				[]->
+					true = ets:delete(?TAB, {conns_sup, Ref});
+				NPidNumList->
+					ets:insert(?TAB, {{conns_sup, Ref},NPidNumList})
+			end;
+		[]->
+			error_logger:error_msg("conns_sup down Pid:~p~n",[Pid])
+	end,
 	Monitors2 = lists:keydelete({MonitorRef, Pid}, 1, Monitors),
 	{noreply, State#state{monitors=Monitors2}};
 handle_info(_Info, State) ->
