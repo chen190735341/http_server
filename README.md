@@ -1,0 +1,3 @@
+# http_server
+cowboy http server
+第二个版本，修改了cowboy源码，主要修改ranch application源码，把原来连接处理进程ranch_conns_sup单点改了，改成可配置多个ranch_conns_sup进程来处理连接。
